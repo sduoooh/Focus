@@ -1,20 +1,63 @@
 <script setup>
 import { ref } from "vue"
+import axios from 'axios'
 
-const chatList = ref([{ "role": "AI", "text": "您好，我是您的信息助手，请输入相应的指令。" }, 
+const chatList = ref([{ "role": "AI", "text": "您好，您目前尚未登录，请输入api后连接openai." }, 
 ])
 
 const question = ref("")
 const status = ref(false)
+const loginStatus = ref(false)
 
-function send(){
+async function login(){
   if (!status.value){
+  if (question.value === "") {
+    console.warn("Can not send the empty imformation.")
+    return
+  }
   status.value = true
   chatList.value.push({"role":"user","text":question.value})
+  await axios.post("http://127.0.0.1:8000/login",{"userAPI":question.value})
+  .then((response)=>{
+    console.warn("登录成功！以下是详细信息：")
+    console.log(response)
+    chatList.value.push({"role":"system", "text":"登陆成功！"})
+    chatList.value.push({"role":"AI", "text": response["data"]["msg"]['choices'][0]['message']['content']})
+    loginStatus.value = true
+  })
+  .catch((error)=>{
+    console.warn("输入了错误的api。")
+    console.log(error)
+    chatList.value.push({"role":"system", "text":"输入了错误的api。"})
+  })
   question.value = ""
   status.value = false
   }
 }
+
+async function send(){
+  if (!status.value){
+  if (question.value === "") {
+    console.warn("Can not send the empty imformation.")
+    return
+  }
+  status.value = true
+  chatList.value.push({"role":"user","text":question.value})
+  await axios.post("http://127.0.0.1:8000/chat",{"msg":question.value,"model":"chat",})
+  .then((response)=>{
+    console.warn("成功返回信息，以下是详细信息：")
+    console.log(response)
+    chatList.value.push({"role":"AI", "text": response["data"]["msg"]})
+  })
+  .catch((error)=>{
+    console.warn("服务器掉线了")
+    chatList.value.push({"role":"system", "text":"服务器掉线了"})
+  })
+  question.value = ""
+  status.value = false
+  }
+}
+
 </script>
 
 <template>
@@ -38,8 +81,8 @@ function send(){
             line-height: 25px;
             font-size: 15px;
             text-indent: 15px;"
-        >
-        <div @click="send" style="border-radius: 25px;width:20px;height:20px;background-color: brown;margin-left: 92vw; position: relative; bottom: 3.5vh;"></div>
+        > 
+        <div @click="loginStatus?send():login()" style="border-radius: 25px;width:20px;height:20px;background-color: brown;margin-left: 92vw; position: relative; bottom: 3.5vh;"></div>
       </div>
 
     </div>
